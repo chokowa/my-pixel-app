@@ -6,7 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. 各モジュールのインスタンスを生成
     const uiManager = new UIManager();
     const paletteManager = new PaletteManager(uiManager);
-    const pixelConverter = new PixelConverter(uiManager, paletteManager, new Worker('worker.js'));
+　　const workerUrl = new URL('../worker.js', import.meta.url);
+　　const pixelConverter = new PixelConverter(uiManager, paletteManager, new Worker(workerUrl, { type: 'module' }));
     
     // 2. イベントハンドラのコールバックを定義
     const callbacks = {
