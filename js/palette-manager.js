@@ -32,7 +32,7 @@ export class PaletteManager {
         return true; // 変更があったことを通知
     }
 
-    async extractPaletteFromImage(loadedImage) {
+    async extractPaletteFromImage(loadedImage, onPaletteChange, onPaletteDelete) {
         if (!loadedImage) return;
 
         const colorCount = parseInt(this.uiManager.dom.extractColorCount.value, 10);
@@ -67,7 +67,7 @@ export class PaletteManager {
             const paletteId = `custom_${Date.now()}`;
             const methodName = method === 'medianCut' ? "メディアンカット" : "出現頻度";
             const name = `抽出(${methodName}, ${colorCount}色)`;
-            this.addCustomPalette(paletteId, name, paletteColors);
+            this.addCustomPalette(paletteId, name, paletteColors, onPaletteChange, onPaletteDelete);
             return paletteId;
 
         } catch (error) {
