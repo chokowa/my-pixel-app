@@ -6,8 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. 各モジュールのインスタンスを生成
     const uiManager = new UIManager();
     const paletteManager = new PaletteManager(uiManager);
-　　const workerUrl = new URL('../worker.js', import.meta.url);
-　　const pixelConverter = new PixelConverter(uiManager, paletteManager, new Worker(workerUrl, { type: 'module' }));
+    const workerUrl = new URL('../worker.js', import.meta.url);
+    const pixelConverter = new PixelConverter(uiManager, paletteManager, new Worker(workerUrl, { type: 'module' }));
     
     // 2. イベントハンドラのコールバックを定義
     const callbacks = {
@@ -37,12 +37,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         onExtractPalette: async () => {
-            const newPaletteId = await paletteManager.extractPaletteFromImage(pixelConverter.loadedImage);
+            const newPaletteId = await paletteManager.extractPaletteFromImage(
+                pixelConverter.loadedImage,
+                callbacks.onPaletteChange,
+                callbacks.onPaletteDelete
+            );
             if (newPaletteId) {
                 callbacks.onPaletteChange(newPaletteId);
             }
         },
-        onImportPalette: (e) => paletteManager.handlePaletteImport(e, callbacks.onPaletteChange, callbacks.onPaletteDelete),
+        onImportPalette: (e) => paletteManager.handlePaletteImport(
+            e,
+            callbacks.onPaletteChange,
+            callbacks.onPaletteDelete
+        ),
         onExportPalette: () => paletteManager.exportCurrentPalette(),
         onBrightnessAdjust: (step) => {
             const s = uiManager.dom.sliders;
