@@ -1,0 +1,312 @@
+/* レイアウト崩れ防止 */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body { font-family: system-ui, sans-serif; margin:0; padding:0; background:#f6f6f6; }
+.layout { display:flex; height:100vh; }
+.controls { width:300px; padding:16px; background:white; border-right:1px solid #ccc; overflow-y:auto; overflow-x:hidden; position: relative; flex-shrink: 0; }
+.controls h1 { font-size: 1.5em; margin: 0 0 16px 0; text-align: center; color: #333; }
+.image-area {
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    padding:10px;
+    min-width: 0;
+}
+.canvas-row {
+    flex:1;
+    display:flex;
+    gap:10px;
+    min-height: 0;
+}
+.canvas-box {
+    flex:1;
+    background:white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    overflow:hidden;
+    border-radius:8px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.1);
+    min-width: 0;
+    position: relative;
+}
+canvas, img {
+    max-width:100%;
+    max-height:100%;
+    object-fit:contain;
+    /* ★★★ 変更：動的サイズ変更のため height: auto を基本とする */
+    height: auto;
+}
+
+/* --- 操作ガイドのスタイル --- */
+#src-placeholder {
+    color: #555;
+    text-align: left;
+    padding: 20px 30px;
+    max-width: 500px;
+    border: 2px dashed #bbb;
+    border-radius: 12px;
+    background-color: #fafafa;
+    line-height: 1.7;
+}
+#src-placeholder h3 {
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #333;
+    font-size: 1.2em;
+}
+#src-placeholder ol {
+    padding-left: 25px;
+    margin: 0;
+}
+#src-placeholder li {
+    margin-bottom: 15px;
+}
+#src-placeholder li:last-child {
+    margin-bottom: 0;
+}
+#src-placeholder strong {
+    color: #007bff;
+    font-size: 1.1em;
+}
+
+/* --- 画像ラベルのスタイル --- */
+.image-label {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: bold;
+    z-index: 5;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    pointer-events: none;
+}
+
+.image-label.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+
+/* プレビューサイズ固定がONのとき、imgとcanvasをコンテナいっぱいに広げる */
+.fixed-size {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+/* canvasを引き伸ばした際にピクセルがぼやけないようにする */
+canvas.fixed-size {
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+label { display:block; margin-top:10px; font-size:14px; }
+.checkbox-label { display: flex; align-items: center; margin-top: 5px; font-size: 14px; }
+.checkbox-label input[type="checkbox"] { width: auto; margin-top: 0; margin-right: 8px; }
+input, select { width:100%; margin-top:4px; padding:6px; border:1px solid #ccc; border-radius:4px; }
+input[type="number"] { width:60px; margin-left:4px; }
+button { margin-top:6px; width:100%; padding:8px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer; font-size:14px; }
+button:hover { background:#0056b3; }
+button:disabled { background:#cccccc; cursor:not-allowed; }
+#brightness-controls { display: flex; gap: 6px; margin-top: 10px; }
+#brightness-controls button { flex: 1; font-size: 14px; padding: 6px; background: #6c757d; }
+#brightness-controls button:hover { background: #5a6268; }
+
+#loading-overlay { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.85); justify-content: center; align-items: center; flex-direction: column; gap: 10px; font-size: 1.2em; font-weight: bold; color: #333; z-index: 10; border-radius: 8px; }
+.controls.loading { opacity: 1; pointer-events: none; }
+.controls.loading #loading-overlay { display: flex; }
+#progress-bar-container { width: 80%; background-color: #e0e0e0; border-radius: 5px; overflow: hidden; margin-top: 10px; }
+#progress-bar { width: 0%; height: 20px; background-color: #007bff; text-align: center; color: white; line-height: 20px; border-radius: 5px; transition: width 0.1s ease-out; }
+
+.error-message { color: red; font-size: 0.85em; margin-top: 2px; }
+
+#auto-correction-info {
+    font-size: 12px;
+    color: #007bff;
+    margin-top: 4px;
+    height: 14px; /* ガタツキ防止 */
+    font-weight: bold;
+    text-align: center;
+}
+
+/* パレット選択UIのスタイル */
+.palette-group { margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; }
+.palette-group h4 { margin: 0 0 10px 0; font-size: 14px; color: #333; font-weight: bold; }
+.palette-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
+.palette-item {
+    position: relative; /* 削除ボタンの基準位置 */
+    cursor: pointer; border: 2px solid #ddd; border-radius: 6px; padding: 5px; transition: all 0.2s ease-in-out; background: #fdfdfd; display: flex; flex-direction: column; align-items: center;
+}
+.palette-item:hover { border-color: #007bff; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+.palette-item.selected { border-color: #007bff; background: #e7f3ff; box-shadow: 0 0 8px rgba(0, 123, 255, 0.5); }
+.palette-canvas { width: 100%; height: 35px; display: block; border-radius: 3px; border: 1px solid #ccc; margin-bottom: 5px; }
+.palette-item-text { text-align: center; }
+p.palette-name { margin: 0; font-size: 11px; font-weight: bold; color: #333; line-height: 1.2; }
+span.palette-info { font-size: 10px; color: #666; }
+
+/* カスタムパレット削除ボタンのスタイル */
+.delete-palette-btn {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 20px;
+    height: 20px;
+    background: #888;
+    color: white;
+    border: 1px solid white;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 18px; /* 微調整 */
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background 0.2s, transform 0.2s;
+    opacity: 0.7;
+    z-index: 10;
+}
+.delete-palette-btn:hover {
+    background: #e53935; /* Red on hover */
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* Pixel倍率UIのスタイル */
+.scale-control-group { margin-top: 10px; padding: 10px; border: 1px solid #eee; border-radius: 4px; }
+.scale-control-group > label { margin-top: 0; display: flex; justify-content: space-between; align-items: center; }
+#output-resolution { font-weight: bold; color: #007bff; background: #e7f3ff; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+#scale-presets { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 8px; }
+#scale-presets button { font-size: 12px; padding: 6px 4px; margin: 0; background-color: #f0f0f0; color: #333; border: 1px solid #ccc; }
+#scale-presets button.selected { background-color: #007bff; color: white; border-color: #0056b3; font-weight: bold; }
+.manual-scale-label { margin-top: 12px; font-size: 12px; color: #555; }
+#scale { margin-top: 0; }
+
+/* 共通アコーディオンUIのスタイル */
+.advanced-controls, .palette-accordion {
+    margin-top: 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.advanced-controls summary, .palette-accordion summary {
+    cursor: pointer;
+    padding: 10px 12px;
+    background-color: #f7f7f7;
+    font-weight: bold;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    outline: none;
+    transition: background-color 0.2s;
+}
+.advanced-controls summary:hover, .palette-accordion summary:hover {
+    background-color: #efefef;
+}
+.advanced-controls summary::-webkit-details-marker, .palette-accordion summary::-webkit-details-marker {
+    display: none;
+}
+.advanced-controls summary::before, .palette-accordion summary::before {
+    content: '▶';
+    margin-right: 8px;
+    font-size: 10px;
+    transition: transform 0.2s ease-in-out;
+    transform-origin: center;
+}
+.advanced-controls[open] > summary::before, .palette-accordion[open] > summary::before {
+    transform: rotate(90deg);
+}
+.accordion-content {
+    padding: 0 12px 12px 12px;
+    border-top: 1px solid #ddd;
+}
+.accordion-group {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #eee;
+}
+.accordion-group:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+.accordion-content .checkbox-label {
+    margin-top: 12px;
+}
+.label-hint {
+    font-size: 11px;
+    color: #777;
+    display: block;
+    margin-top: 2px;
+    margin-left: 2px;
+}
+.accordion-content > .palette-group:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+.accordion-content > #customPaletteGroup[style*="display:none"] + #paletteSelectionArea > .palette-group:first-of-type {
+     margin-top: 0;
+     padding-top: 0;
+     border-top: none;
+}
+
+/* パレット抽出UIグループのスタイル */
+.palette-extract-group {
+    margin-top: 15px;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+.palette-extract-group button {
+    width: 100%;
+    margin-top: 0;
+}
+.palette-extract-options {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+.palette-extract-options select {
+    flex-grow: 1; 
+    margin-top: 0;
+}
+.palette-extract-options #extractColorCount {
+    flex-grow: 0;
+    width: auto;
+}
+
+/* カスタムパレット用ボタンのスタイル */
+.custom-palette-buttons { display: flex; gap: 8px; margin-top: 15px; }
+.custom-palette-buttons .custom-palette-import-wrapper { flex-grow: 1; }
+.custom-palette-buttons button,
+.custom-palette-buttons select { margin-top: 0; }
+
+
+/* スマートフォン用レイアウト */
+@media (max-width: 768px) {
+    .layout { flex-direction: column; height: auto; }
+    .controls { width: 100%; height: auto; border-right: none; overflow-y: visible; padding-bottom: 24px; }
+    .controls h1 { font-size: 1.3em; margin-bottom: 12px; }
+    .image-area { height: 50vh; padding: 10px 10px 0 10px; cursor: pointer; }
+    .canvas-row { min-height: 100%; }
+
+    .desktop-only {
+        display: none !important;
+    }
+}

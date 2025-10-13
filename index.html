@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>レトロ風ドット絵変換（モジュール化版）</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="layout">
+  <div class="controls" id="controls">
+    <div id="loading-overlay">
+      <span></span>
+      <div id="progress-bar-container">
+        <div id="progress-bar">0%</div>
+      </div>
+    </div>
+    <h1>レトロ風ドット絵メーカー</h1>
+    
+    <label>画像を選択<input type="file" id="file" accept="image/*"></label>
+
+    <div class="palette-extract-group">
+      <button id="extractPaletteBtn" disabled>画像からパレットを抽出</button>
+      <div class="palette-extract-options">
+        <select id="extractMethod" title="抽出方法を選択">
+          <option value="medianCut" selected>メディアンカット法</option>
+          <option value="frequency">出現頻度順</option>
+        </select>
+        <select id="extractColorCount" title="抽出する色数を選択">
+          <option value="8">8色</option>
+          <option value="16">16色</option>
+          <option value="32" selected>32色</option>
+          <option value="64">64色</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="mobile-image-placeholder"></div>
+    
+    <div class="custom-palette-buttons desktop-only">
+      <div class="custom-palette-import-wrapper">
+        <button id="importPaletteBtn">パレットをインポート</button>
+      </div>
+    </div>
+    <input type="file" id="paletteImporter" class="desktop-only" style="display:none;" accept=".json,text/plain">
+
+    <details class="palette-accordion" open>
+        <summary>🎨 パレット選択</summary>
+        <div class="accordion-content">
+            <div id="customPaletteGroup" class="palette-group" style="display:none;">
+              <h4>カスタムパレット</h4>
+              <div id="customPaletteContainer" class="palette-container">
+              </div>
+              <button id="exportPaletteBtn" disabled>このパレットをエクスポート</button>
+            </div>
+            <div id="paletteSelectionArea">
+            </div>
+        </div>
+    </details>
+    
+    <details class="advanced-controls">
+        <summary>画質詳細設定</summary>
+        <div class="accordion-content">
+            <div class="accordion-group">
+                <label class="checkbox-label" style="margin-top:12px;"><input type="checkbox" id="autoPreset" checked> パレット変更時に自動設定</label>
+            </div>
+            
+            <div class="accordion-group">
+                <label>解像度（基準ドット数）: <span id="dotVal">64</span>
+                  <input type="range" id="dotSlider" min="16" max="640" value="64">
+                  <input type="number" id="dotInput" min="16" max="640" value="64">
+                  <div id="dotError" class="error-message"></div>
+                </label>
+                <label class="checkbox-label"><input type="checkbox" id="correctAspect" checked> 短辺を基準に合わせる</label>
+            </div>
+            
+            <div class="accordion-group">
+                <label>明るさ: <span id="exposureVal">1.0</span>
+                  <input type="range" id="exposure" min="0.1" max="5" step="0.01" value="1.0">
+                  <div id="exposureError" class="error-message"></div>
+                </label>
+            
+                <label>コントラスト: <span id="contrastVal">0</span>
+                  <input type="range" id="contrast" min="-100" max="100" value="0">
+                  <div id="contrastError" class="error-message"></div>
+                </label>
+            
+                <label>シャープネス: <span id="sharpenVal">0</span>
+                    <input type="range" id="sharpen" min="0" max="100" value="0">
+                    <div id="sharpenError" class="error-message"></div>
+                </label>
+            </div>
+
+            <div class="accordion-group">
+                <label class="checkbox-label"><input type="checkbox" id="dither" checked> ディザリングを使用</label>
+                <div id="dither-strength-group">
+                    <label>ディザの強さ: <span id="ditherVal">30</span>
+                        <input type="range" id="ditherStrength" min="0" max="100" step="1" value="30">
+                        <div id="ditherStrengthError" class="error-message"></div>
+                    </label>
+                </div>
+                <label>パレット適用度: <span id="paletteRatioVal">1.0</span>
+                  <span class="label-hint">元の色とパレット色のブレンド率</span>
+                  <input type="range" id="paletteRatio" min="0" max="1" step="0.01" value="1">
+                  <div id="paletteRatioError" class="error-message"></div>
+                </label>
+            </div>
+        </div>
+    </details>
+
+    <label style="margin-top:15px;">明るさ補正</label>
+    <div id="brightness-controls">
+      <button data-step="-1">-1</button>
+      <button data-step="0">0 (リセット)</button>
+      <button data-step="+1">+1</button>
+    </div>
+    <div id="auto-correction-info"></div>
+
+    <label class="checkbox-label"><input type="checkbox" id="fixedPreview" checked> プレビューサイズ固定</label>
+    
+    <div class="scale-control-group">
+      <label>出力サイズ
+        <span id="output-resolution">--- x --- px</span>
+      </label>
+      <div id="scale-presets">
+        <button data-scale="4">小 (SNS)</button>
+        <button data-scale="8">中 (標準)</button>
+        <button data-scale="16">大 (高画質)</button>
+      </div>
+      <label class="manual-scale-label">手動倍率: <span id="scaleVal">8</span>x</label>
+      <input type="range" id="scale" min="1" max="32" value="8">
+      <div id="scaleError" class="error-message"></div>
+    </div>
+    
+    <button id="download" disabled>PNGでダウンロード</button>
+  </div>
+
+  <div class="image-area" id="image-area">
+    <div class="canvas-row">
+      <div class="canvas-box" id="src-container">
+          <div id="src-label" class="image-label">元画像 (タップで戻る)</div>
+          <img id="src" alt="元画像" style="display:none;">
+          <div id="src-placeholder">
+              <h3>かんたん操作ガイド 🎨</h3>
+              <ol>
+                  <li>
+                      <strong>画像を読み込む</strong><br>
+                      左の「画像を選択」ボタンを押すか、このエリアに画像ファイルをドラッグ＆ドロップしてください。
+                  </li>
+                  <li>
+                      <strong>パレットを選ぶ</strong><br>
+                      好きなゲーム機風の「パレット」を選んでみましょう。雰囲気がガラッと変わります！
+                  </li>
+                  <li>
+                      <strong>画質を調整（お好みで）</strong><br>
+                      「画質詳細設定」を開くと、ドットの粗さ（解像度）や明るさなどを細かく調整できます。
+                  </li>
+                  <li>
+                      <strong>ダウンロード</strong><br>
+                      気に入ったドット絵ができたら、左下のボタンで画像を保存できます。
+                  </li>
+              </ol>
+          </div>
+      </div>
+      <div class="canvas-box" id="out-container">
+        <div id="out-label" class="image-label">出力画像 (タップで元画像表示)</div>
+        <canvas id="out"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
